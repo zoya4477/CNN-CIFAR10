@@ -1,1 +1,1 @@
-# CNN-CIFAR10
+# CNN-MNIST
