@@ -1,73 +1,72 @@
-# Import necessary libraries
 import streamlit as st
-import tensorflow as tf
 import numpy as np
+import tensorflow as tf
+from tensorflow.keras.models import load_model
 import matplotlib.pyplot as plt
 from PIL import Image
-from tensorflow.keras.applications import ResNet50
-from tensorflow.keras.preprocessing.image import img_to_array
-from tensorflow.keras.models import load_model
 
-# Load pre-trained CIFAR-10 model (adjust path accordingly)
+# Load the pre-trained CNN model
 @st.cache(allow_output_mutation=True)
-def load_cifar_model():
-    model = load_model('cifar10_cnn_model.h5')  # Ensure the model path is correct
+def load_cnn_model():
+    model = load_model('mnist_cnn_model.h5')  # Ensure to have this pre-trained model
     return model
 
-model = load_cifar_model()
+model = load_cnn_model()
 
-# CIFAR-10 class names
-class_names = ['airplane', 'automobile', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck']
+# Title of the Streamlit app
+st.title("MNIST Handwritten Digit Classification")
 
-# Streamlit App title
-st.title("CIFAR-10 Image Classification with Pre-trained CNN")
+# Upload an image
+uploaded_file = st.file_uploader("Upload a handwritten digit image (28x28 pixels, grayscale)", type=["png", "jpg", "jpeg"])
 
-# Display model summary
-st.subheader("Model Summary")
-st.text(model.summary())
-
-# Upload image file
-uploaded_file = st.file_uploader("Choose a CIFAR-10 image...", type=["jpg", "png"])
-
-# Preprocess the uploaded image for prediction
+# Preprocess the image for the CNN model
 def preprocess_image(image):
-    image = image.resize((32, 32))  # Resize to CIFAR-10 dimensions (32x32)
-    image = img_to_array(image) / 255.0  # Normalize to [0, 1]
-    image = np.expand_dims(image, axis=0)  # Add batch dimension
+    image = image.convert('L')  # Convert to grayscale
+    image = image.resize((28, 28))  # Resize to 28x28
+    image = np.array(image) / 255.0  # Normalize to [0, 1]
+    image = np.expand_dims(image, axis=(0, -1))  # Add batch and channel dimensions
     return image
 
-# Predict the class of the uploaded image
+# Display the uploaded image and make predictions
 if uploaded_file is not None:
     image = Image.open(uploaded_file)
     st.image(image, caption='Uploaded Image', use_column_width=True)
-    st.write("Classifying...")
-    
-    # Preprocess and predict
+
+    # Preprocess the image
     processed_image = preprocess_image(image)
-    predictions = model.predict(processed_image)
-    predicted_class = np.argmax(predictions)
-    
-    st.write(f"Predicted Class: {class_names[predicted_class]}")
 
-# Model analysis: display accuracy and loss graphs
-st.subheader("Model Performance (Training/Validation)")
-if st.button("Show Accuracy and Loss"):
-    # Assuming model history is saved in 'history.npy'
+    # Make prediction
+    prediction = model.predict(processed_image)
+    predicted_class = np.argmax(prediction)
+
+    st.write(f"Predicted Digit: {predicted_class}")
+
+# Display model analysis (accuracy and loss graphs)
+st.subheader("Model Performance Metrics")
+
+# Load model history (training history)
+@st.cache
+def load_history():
     history = np.load('history.npy', allow_pickle=True).item()
+    return history
 
-    # Plot model accuracy and loss
-    fig, ax = plt.subplots(1, 2, figsize=(12, 4))
-    
-    # Plot accuracy
-    ax[0].plot(history['accuracy'], label='Train Accuracy')
-    ax[0].plot(history['val_accuracy'], label='Validation Accuracy')
-    ax[0].set_title('Accuracy')
-    ax[0].legend()
+history = load_history()
 
-    # Plot loss
-    ax[1].plot(history['loss'], label='Train Loss')
-    ax[1].plot(history['val_loss'], label='Validation Loss')
-    ax[1].set_title('Loss')
-    ax[1].legend()
+# Plot accuracy and loss graphs
+fig, ax = plt.subplots(1, 2, figsize=(12, 4))
 
-    st.pyplot(fig)
+# Accuracy plot
+ax[0].plot(history['accuracy'], label='Training Accuracy')
+ax[0].plot(history['val_accuracy'], label='Validation Accuracy')
+ax[0].set_title('Model Accuracy')
+ax[0].legend()
+
+# Loss plot
+ax[1].plot(history['loss'], label='Training Loss')
+ax[1].plot(history['val_loss'], label='Validation Loss')
+ax[1].set_title('Model Loss')
+ax[1].legend()
+
+st.pyplot(fig)
+
+
